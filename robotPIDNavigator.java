@@ -1,10 +1,15 @@
 package org.firstinspires.ftc.teamcode.WorldRobotPrograms;
 
+import android.os.Bundle;
+
+import com.qualcomm.ftccommon.DbgLog;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.AdafruitIMU;
+
+import java.util.Calendar;
 
 
 public final class robotPIDNavigator {
@@ -78,12 +83,17 @@ public final class robotPIDNavigator {
     public void loopNavigation() {
         yawAngle = AdafruitGyro.getYaw();
 
-        opmode.telemetry.addData("Heading, Goal", "%1$s, %2$s", currentHeading(), movementArray[movementArrayStep][2]);
-        opmode.telemetry.addData("Completed Heading", completedHeading);
-        opmode.telemetry.addData("Encoder values", "\nRF: %1$s LF: %2$s\nRB: %3$s LB: %4$s", rightFront.getCurrentPosition(), leftFront.getCurrentPosition(), rightBack.getCurrentPosition(), leftBack.getCurrentPosition());
-        opmode.telemetry.addData("Motor powers", "\nRF: %1$s LF: %2$s\nRB: %3$s LB: %4$s", rightFront.getPower(), leftFront.getPower(), rightBack.getPower(), leftBack.getPower());
+        DbgLog.msg("Heading" + currentHeading());
 
         move((int) movementArray[movementArrayStep][0], movementArray[movementArrayStep][1], movementArray[movementArrayStep][2]);
+    }
+
+    public void updateTelemetry() {
+        opmode.telemetry.addData("Heading, Goal", "%1$s, %2$s", currentHeading(), movementArray[movementArrayStep][2]);
+        opmode.telemetry.addData("Completed Heading", completedHeading);
+        opmode.telemetry.addData("Type, step", "%1$s, %2$s", navigationType(), navigationStep());
+        opmode.telemetry.addData("Encoder values", "\nRF: %1$s LF: %2$s\nRB: %3$s LB: %4$s", rightFront.getCurrentPosition(), leftFront.getCurrentPosition(), rightBack.getCurrentPosition(), leftBack.getCurrentPosition());
+        opmode.telemetry.addData("Motor powers", "\nRF: %1$s LF: %2$s\nRB: %3$s LB: %4$s", rightFront.getPower(), leftFront.getPower(), rightBack.getPower(), leftBack.getPower());
     }
 
     public int navigationStep() {
@@ -141,6 +151,9 @@ public final class robotPIDNavigator {
             case 5:
                 fullStop();
                 break;
+            case -1:
+                setPoint = goalValue;
+                movementArrayStep++;
             default:
                 break;
         }
@@ -182,6 +195,24 @@ public final class robotPIDNavigator {
         } else {
             nextMovement();
         }
+    }
+
+    private void rotateDelta(double amount) { //Movement val == 11
+        double goal = yawAngle + amount;
+
+        // Convert to -180-180 range
+        if(goal >= 180) {
+            goal = -180 + goal;
+        }
+        else if(goal <= -180) {
+            goal = 180 - goal;
+        }
+
+        // Set our target point
+        setPoint = goal;
+
+        // Rotate
+        loopPID(0, turnKp, turnKi, turnKd);
     }
 
     private double convertInchesToEncoderTicks(double inches) {
